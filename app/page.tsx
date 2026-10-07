@@ -1,80 +1,149 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { usuariosStore, sessaoStore } from "@/lib/users";
+import { sessaoStore, type Sessao } from "@/lib/users";
+import { salasStore, type Sala } from "@/lib/salas";
 
-export default function Home() {
+const MODULOS = [
+  {
+    href: "/inventario",
+    titulo: "Inventário de Cabeamento",
+    desc: "Ponto de rede → patch panel/porta → porta de switch → categoria do cabo.",
+  },
+  {
+    href: "/etiquetas",
+    titulo: "Gerador de Etiquetas",
+    desc: "Crie códigos de identificação seguindo a nomenclatura da sua equipe.",
+  },
+  {
+    href: "/certificacao",
+    titulo: "Testes de Certificação",
+    desc: "Registre testes e valide automaticamente contra os limites da norma (PASS/FAIL).",
+  },
+];
+
+export default function DashboardPage() {
   const router = useRouter();
-  const [usuario, setUsuario] = useState("");
-  const [senha, setSenha] = useState("");
-  const [erro, setErro] = useState("");
+  const [sessao, setSessao] = useState<Sessao | null>(null);
+  const [salas, setSalas] = useState<Sala[]>([]);
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const encontrado = usuariosStore.autenticar(usuario, senha);
-    if (!encontrado) {
-      setErro("Usuário ou senha incorretos.");
-      return;
-    }
-    sessaoStore.set(encontrado);
-    router.push("/dashboard");
+  function refreshSalas() {
+    setSalas(salasStore.list());
   }
 
+  useEffect(() => {
+    const s = sessaoStore.get();
+    if (!s) {
+      router.push("/");
+      return;
+    }
+    setSessao(s);
+    refreshSalas();
+  }, [router]);
+
+  function sair() {
+    sessaoStore.clear();
+    router.push("/");
+  }
+
+  function adicionarSala() {
+    const nome = prompt("Nome da nova sala:");
+    if (!nome || !nome.trim()) return;
+    salasStore.criar(nome.trim());
+    refreshSalas();
+  }
+
+  function removerSala(id: string, nome: string) {
+    if (confirm(`Remover a sala "${nome}"?`)) {
+      salasStore.remover(id);
+      refreshSalas();
+    }
+  }
+
+  if (!sessao) return null;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-500 to-gray-200 flex items-center justify-center px-5">
-      <div className="w-full max-w-[450px] rounded-2xl border-2 border-gray-400 p-10 text-white">
-        <h1 className="text-center text-4xl font-bold mb-10">Login</h1>
-
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          <div className="flex items-center rounded-full border-2 border-gray-400 px-5 h-[55px]">
-            <input
-              type="text"
-              placeholder="Usuário"
-              required
-              value={usuario}
-              onChange={(e) => setUsuario(e.target.value)}
-              className="w-full bg-transparent outline-none text-white placeholder-white"
-            />
+    <div className="min-h-screen bg-gradient-to-br from-black via-gray-500 to-gray-200 px-5 py-16">
+      <div className="mx-auto max-w-4xl">
+        <div className="mb-10 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-white">Bem-vindo, {sessao.nomeUsuario}</h1>
+            <p className="text-slate-200">Escolha um módulo para começar.</p>
           </div>
-
-          <div className="flex items-center rounded-full border-2 border-gray-400 px-5 h-[55px]">
-            <input
-              type="password"
-              placeholder="Senha"
-              required
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              className="w-full bg-transparent outline-none text-white placeholder-white"
-            />
-          </div>
-
-          {erro && <p className="text-center text-sm text-red-300">{erro}</p>}
-
-          <div className="flex items-center justify-between text-sm">
-            <label className="flex items-center gap-2">
-              <input type="checkbox" /> Lembre-me
-            </label>
-            <Link href="/forgot-password" className="font-bold hover:underline">
-              Esqueceu a senha?
+          <div className="flex gap-2">
+            {sessao.isAdmin && (
+              <Link href="/register">
+                <button className="rounded-md bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/20">
+                  Criar Conta
+                </button>
+              </Link>
+            )}
+            <Link href="/usuarios">
+              <button className="rounded-md bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/20">
+                Ver Usuários
+              </button>
             </Link>
+            <button
+              onClick={sair}
+              className="rounded-md bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/20"
+            >
+              Sair
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {MODULOS.map((m) => (
+            <Link key={m.href} href={m.href}>
+              <div className="h-full rounded-lg border border-white/20 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+                <h2 className="mb-2 font-semibold text-slate-900">{m.titulo}</h2>
+                <p className="text-sm text-slate-500">{m.desc}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+
+        {/* ---------- Seção de Salas ---------- */}
+        <div className="mt-12">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-white">Minhas Salas</h2>
+            <button
+              onClick={adicionarSala}
+              className="flex items-center gap-1 rounded-md bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-200"
+            >
+              <span className="text-lg leading-none">+</span> Adicionar Sala
+            </button>
           </div>
 
-          <button
-            type="submit"
-            className="w-full rounded-full bg-white py-3 font-bold text-black transition-colors hover:bg-gray-200"
-          >
-            Login
-          </button>
-
-          <p className="text-center text-sm">
-            Não tem uma conta?{" "}
-            <Link href="/register" className="font-bold hover:underline">
-              Criar uma conta
-            </Link>
-          </p>
-        </form>
+          {salas.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-white/30 p-6 text-center text-slate-200">
+              Nenhuma sala cadastrada ainda. Clique em "Adicionar Sala" para começar.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {salas.map((s) => (
+                <div
+                  key={s.id}
+                  className="relative h-full rounded-lg border border-white/20 bg-white p-5 shadow-sm"
+                >
+                  <button
+                    onClick={() => removerSala(s.id, s.nome)}
+                    title="Remover sala"
+                    className="absolute right-3 top-3 text-slate-400 hover:text-red-600"
+                  >
+                    ✕
+                  </button>
+                  <h3 className="pr-6 font-semibold text-slate-900">{s.nome}</h3>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Criada em {new Date(s.criadoEm).toLocaleDateString("pt-BR")}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

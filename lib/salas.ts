@@ -1,44 +1,44 @@
-export type SalaSlug =
-  | "equipamentos"
-  | "secretaria"
-  | "lei1"
-  | "lei2"
-  | "hardware";
-
-export interface SalaInfo {
-  slug: SalaSlug;
+export interface Sala {
+  id: string;
   nome: string;
-  desc: string;
+  criadoEm: string;
 }
 
-export const SALAS: SalaInfo[] = [
-  {
-    slug: "equipamentos",
-    nome: "Sala de Equipamentos",
-    desc: "Rack central, servidores, patch panels e switches.",
-  },
-  {
-    slug: "secretaria",
-    nome: "Secretaria",
-    desc: "Estações administrativas e impressoras.",
-  },
-  {
-    slug: "lei1",
-    nome: "LEI 1",
-    desc: "Laboratório de Informática 1.",
-  },
-  {
-    slug: "lei2",
-    nome: "LEI 2",
-    desc: "Laboratório de Informática 2.",
-  },
-  {
-    slug: "hardware",
-    nome: "Hardware",
-    desc: "Sala de manutenção e bancada de hardware.",
-  },
-];
+const KEY = "app:salas";
 
-export function getSala(slug: string): SalaInfo | undefined {
-  return SALAS.find((s) => s.slug === slug);
+function readAll(): Sala[] {
+  if (typeof window === "undefined") return [];
+  const raw = window.localStorage.getItem(KEY);
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw) as Sala[];
+  } catch {
+    return [];
+  }
 }
+
+function writeAll(items: Sala[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(KEY, JSON.stringify(items));
+}
+
+export const salasStore = {
+  list(): Sala[] {
+    return readAll().sort((a, b) => a.nome.localeCompare(b.nome));
+  },
+  criar(nome: string): Sala {
+    const items = readAll();
+    const nova: Sala = {
+      id: crypto.randomUUID(),
+      nome,
+      criadoEm: new Date().toISOString(),
+    };
+    items.push(nova);
+    writeAll(items);
+    return nova;
+  },
+  remover(id: string) {
+    const items = readAll().filter((s) => s.id !== id);
+    writeAll(items);
+  },
+};
