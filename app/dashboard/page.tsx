@@ -28,6 +28,27 @@ const MODULOS = [
 
 const norm = (s: string) => (s ?? "").trim().toLowerCase();
 
+function IconeLixeira({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className ?? "h-4 w-4"}
+    >
+      <path d="M3 6h18" />
+      <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+    </svg>
+  );
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [sessao, setSessao] = useState<Sessao | null>(null);
@@ -36,9 +57,11 @@ export default function DashboardPage() {
   const [patchPanels, setPatchPanels] = useState<PatchPanel[]>([]);
   const [switches, setSwitches] = useState<SwitchEquip[]>([]);
 
-  const [modalAberto, setModalAberto] = useState(false);
+  const [modalNovaAberto, setModalNovaAberto] = useState(false);
   const [form, setForm] = useState({ nome: "", bloco: "", descricao: "" });
   const [erro, setErro] = useState("");
+
+  const [salaSelecionadaId, setSalaSelecionadaId] = useState<string | null>(null);
 
   function refresh() {
     setSalas(salasStore.list());
@@ -62,14 +85,10 @@ export default function DashboardPage() {
     router.push("/");
   }
 
-  function abrirModal() {
+  function abrirModalNova() {
     setForm({ nome: "", bloco: "", descricao: "" });
     setErro("");
-    setModalAberto(true);
-  }
-
-  function fecharModal() {
-    setModalAberto(false);
+    setModalNovaAberto(true);
   }
 
   function salvarSala(e: React.FormEvent) {
@@ -89,15 +108,26 @@ export default function DashboardPage() {
       descricao: form.descricao.trim() || undefined,
     });
     refresh();
-    fecharModal();
+    setModalNovaAberto(false);
   }
 
   function removerSala(id: string, nome: string) {
     if (confirm(`Remover a sala "${nome}"? Os equipamentos do inventário não serão apagados.`)) {
       salasStore.remover(id);
+      setSalaSelecionadaId(null);
       refresh();
     }
   }
+
+  function dadosDaSala(s: Sala) {
+    return {
+      pontos: pontos.filter((p) => norm(p.local) === norm(s.nome)),
+      pp: patchPanels.filter((p) => norm(p.local) === norm(s.nome)),
+      sw: switches.filter((w) => norm(w.local) === norm(s.nome)),
+    };
+  }
+
+  const salaSelecionada = salas.find((s) => s.id === salaSelecionadaId) ?? null;
 
   if (!sessao) return null;
 
@@ -147,7 +177,7 @@ export default function DashboardPage() {
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-bold text-white">Minhas Salas ({salas.length})</h2>
             <button
-              onClick={abrirModal}
+              onClick={abrirModalNova}
               className="flex items-center gap-1 rounded-md bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-200"
             >
               <span className="text-lg leading-none">+</span> Adicionar Sala
@@ -156,135 +186,34 @@ export default function DashboardPage() {
 
           {salas.length === 0 ? (
             <div className="rounded-lg border border-dashed border-white/30 p-6 text-center text-slate-200">
-              Clique em &quot;Adicionar Sala&quot; para começar.
+              Nenhuma sala cadastrada ainda. Clique em &quot;Adicionar Sala&quot; para começar.
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {salas.map((s) => {
-                const pontosSala = pontos.filter((p) => norm(p.local) === norm(s.nome));
-                const ppSala = patchPanels.filter((p) => norm(p.local) === norm(s.nome));
-                const swSala = switches.filter((w) => norm(w.local) === norm(s.nome));
-
+                const d = dadosDaSala(s);
                 return (
                   <div
                     key={s.id}
-                    className="relative rounded-lg border border-white/20 bg-white p-5 shadow-sm"
+                    onClick={() => setSalaSelecionadaId(s.id)}
+                    className="group relative cursor-pointer rounded-lg border border-white/20 bg-white px-4 py-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                   >
                     <button
-                      onClick={() => removerSala(s.id, s.nome)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removerSala(s.id, s.nome);
+                      }}
                       title="Remover sala"
-                      className="absolute right-3 top-3 text-xs font-medium text-red-600 hover:underline"
+                      className="absolute right-2 top-2 rounded p-1 text-slate-300 transition-colors hover:bg-red-50 hover:text-red-600"
                     >
-                      remover sala
+                      <IconeLixeira className="h-4 w-4" />
                     </button>
 
-                    <h3 className="pr-24 text-lg font-semibold text-slate-900">{s.nome}</h3>
-                    {s.bloco && <p className="text-sm text-slate-500">{s.bloco}</p>}
-                    {s.descricao && <p className="mt-1 text-sm text-slate-600">{s.descricao}</p>}
-                    <p className="mt-1 text-xs text-slate-400">
-                      Criada em {new Date(s.criadoEm).toLocaleDateString("pt-BR")}
+                    <h3 className="truncate pr-6 text-sm font-semibold text-slate-900">{s.nome}</h3>
+                    <p className="truncate text-xs text-slate-400">{s.bloco || "—"}</p>
+                    <p className="mt-2 text-xs text-slate-500">
+                      {d.pontos.length} pontos · {d.pp.length} PP · {d.sw.length} SW
                     </p>
-
-                    {/* Resumo */}
-                    <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                      <div className="rounded-md bg-slate-100 py-2">
-                        <p className="text-lg font-bold text-slate-900">{pontosSala.length}</p>
-                        <p className="text-xs text-slate-500">Pontos</p>
-                      </div>
-                      <div className="rounded-md bg-slate-100 py-2">
-                        <p className="text-lg font-bold text-slate-900">{ppSala.length}</p>
-                        <p className="text-xs text-slate-500">Patch Panels</p>
-                      </div>
-                      <div className="rounded-md bg-slate-100 py-2">
-                        <p className="text-lg font-bold text-slate-900">{swSala.length}</p>
-                        <p className="text-xs text-slate-500">Switches</p>
-                      </div>
-                    </div>
-
-                    {/* Pontos de rede */}
-                    <div className="mt-4">
-                      <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Pontos de Rede
-                      </h4>
-                      {pontosSala.length === 0 ? (
-                        <p className="text-sm text-slate-400">Nenhum ponto nesta sala.</p>
-                      ) : (
-                        <div className="max-h-48 overflow-auto">
-                          <table className="w-full text-left text-xs">
-                            <thead>
-                              <tr className="border-b border-slate-200 text-slate-500">
-                                <th className="py-1 pr-2">Código</th>
-                                <th className="py-1 pr-2">Patch Panel</th>
-                                <th className="py-1 pr-2">Switch</th>
-                                <th className="py-1 pr-2">Cabo</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {pontosSala.map((p) => {
-                                const pp = patchPanels.find((x) => x.id === p.patchPanelId);
-                                const sw = switches.find((x) => x.id === p.switchId);
-                                return (
-                                  <tr key={p.id} className="border-b border-slate-100">
-                                    <td className="py-1 pr-2 font-medium text-slate-900">{p.codigo}</td>
-                                    <td className="py-1 pr-2">
-                                      {pp ? `${pp.codigo} / ${p.portaPatchPanel}` : "—"}
-                                    </td>
-                                    <td className="py-1 pr-2">
-                                      {sw ? `${sw.codigo} / ${p.portaSwitch}` : "—"}
-                                    </td>
-                                    <td className="py-1 pr-2">{p.categoriaCabo}</td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Patch panels */}
-                    <div className="mt-4">
-                      <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Patch Panels
-                      </h4>
-                      {ppSala.length === 0 ? (
-                        <p className="text-sm text-slate-400">Nenhum patch panel nesta sala.</p>
-                      ) : (
-                        <ul className="space-y-1 text-sm text-slate-700">
-                          {ppSala.map((p) => (
-                            <li key={p.id}>
-                              <span className="font-medium">{p.codigo}</span> — {p.totalPortas} portas
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-
-                    {/* Switches */}
-                    <div className="mt-4">
-                      <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Switches
-                      </h4>
-                      {swSala.length === 0 ? (
-                        <p className="text-sm text-slate-400">Nenhum switch nesta sala.</p>
-                      ) : (
-                        <ul className="space-y-1 text-sm text-slate-700">
-                          {swSala.map((w) => (
-                            <li key={w.id}>
-                              <span className="font-medium">{w.codigo}</span>
-                              {w.modelo ? ` (${w.modelo})` : ""} — {w.totalPortas} portas
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-
-                    <Link
-                      href="/inventario"
-                      className="mt-4 inline-block text-xs font-medium text-slate-600 hover:underline"
-                    >
-                      Gerenciar no inventário →
-                    </Link>
                   </div>
                 );
               })}
@@ -293,11 +222,151 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ---------- Modal Detalhes da Sala ---------- */}
+      {salaSelecionada && (() => {
+        const d = dadosDaSala(salaSelecionada);
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+            onClick={() => setSalaSelecionadaId(null)}
+          >
+            <div
+              className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">{salaSelecionada.nome}</h2>
+                  {salaSelecionada.bloco && (
+                    <p className="text-sm text-slate-500">{salaSelecionada.bloco}</p>
+                  )}
+                  {salaSelecionada.descricao && (
+                    <p className="mt-1 text-sm text-slate-600">{salaSelecionada.descricao}</p>
+                  )}
+                  <p className="mt-1 text-xs text-slate-400">
+                    Criada em {new Date(salaSelecionada.criadoEm).toLocaleDateString("pt-BR")}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => removerSala(salaSelecionada.id, salaSelecionada.nome)}
+                    title="Remover sala"
+                    className="rounded p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                  >
+                    <IconeLixeira className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => setSalaSelecionadaId(null)}
+                    className="px-1 text-2xl leading-none text-slate-400 hover:text-slate-700"
+                    aria-label="Fechar"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-md bg-slate-100 py-2">
+                  <p className="text-lg font-bold text-slate-900">{d.pontos.length}</p>
+                  <p className="text-xs text-slate-500">Pontos</p>
+                </div>
+                <div className="rounded-md bg-slate-100 py-2">
+                  <p className="text-lg font-bold text-slate-900">{d.pp.length}</p>
+                  <p className="text-xs text-slate-500">Patch Panels</p>
+                </div>
+                <div className="rounded-md bg-slate-100 py-2">
+                  <p className="text-lg font-bold text-slate-900">{d.sw.length}</p>
+                  <p className="text-xs text-slate-500">Switches</p>
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Pontos de Rede
+                </h4>
+                {d.pontos.length === 0 ? (
+                  <p className="text-sm text-slate-400">Nenhum ponto nesta sala.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-slate-500">
+                          <th className="py-1 pr-2">Código</th>
+                          <th className="py-1 pr-2">Patch Panel</th>
+                          <th className="py-1 pr-2">Switch</th>
+                          <th className="py-1 pr-2">Cabo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {d.pontos.map((p) => {
+                          const pp = patchPanels.find((x) => x.id === p.patchPanelId);
+                          const sw = switches.find((x) => x.id === p.switchId);
+                          return (
+                            <tr key={p.id} className="border-b border-slate-100">
+                              <td className="py-1 pr-2 font-medium text-slate-900">{p.codigo}</td>
+                              <td className="py-1 pr-2">{pp ? `${pp.codigo} / ${p.portaPatchPanel}` : "—"}</td>
+                              <td className="py-1 pr-2">{sw ? `${sw.codigo} / ${p.portaSwitch}` : "—"}</td>
+                              <td className="py-1 pr-2">{p.categoriaCabo}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4">
+                <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Patch Panels
+                </h4>
+                {d.pp.length === 0 ? (
+                  <p className="text-sm text-slate-400">Nenhum patch panel nesta sala.</p>
+                ) : (
+                  <ul className="space-y-1 text-sm text-slate-700">
+                    {d.pp.map((p) => (
+                      <li key={p.id}>
+                        <span className="font-medium">{p.codigo}</span> — {p.totalPortas} portas
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="mt-4">
+                <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Switches
+                </h4>
+                {d.sw.length === 0 ? (
+                  <p className="text-sm text-slate-400">Nenhum switch nesta sala.</p>
+                ) : (
+                  <ul className="space-y-1 text-sm text-slate-700">
+                    {d.sw.map((w) => (
+                      <li key={w.id}>
+                        <span className="font-medium">{w.codigo}</span>
+                        {w.modelo ? ` (${w.modelo})` : ""} — {w.totalPortas} portas
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <Link
+                href="/inventario"
+                className="mt-5 inline-block text-xs font-medium text-slate-600 hover:underline"
+              >
+                Gerenciar no inventário →
+              </Link>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ---------- Modal Nova Sala ---------- */}
-      {modalAberto && (
+      {modalNovaAberto && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
-          onClick={fecharModal}
+          onClick={() => setModalNovaAberto(false)}
         >
           <div
             className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
@@ -306,8 +375,8 @@ export default function DashboardPage() {
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-bold text-slate-900">Nova Sala</h2>
               <button
-                onClick={fecharModal}
-                className="text-xl leading-none text-slate-400 hover:text-slate-700"
+                onClick={() => setModalNovaAberto(false)}
+                className="text-2xl leading-none text-slate-400 hover:text-slate-700"
                 aria-label="Fechar"
               >
                 ×
@@ -327,7 +396,6 @@ export default function DashboardPage() {
                   className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
                 />
                 <p className="mt-1 text-xs text-slate-400">
-                  
                   Use o mesmo nome no campo &quot;Local&quot; do inventário para os equipamentos aparecerem aqui.
                 </p>
               </div>
@@ -362,7 +430,7 @@ export default function DashboardPage() {
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={fecharModal}
+                  onClick={() => setModalNovaAberto(false)}
                   className="rounded-md bg-slate-100 px-4 py-2 text-sm font-medium text-slate-900 hover:bg-slate-200"
                 >
                   Cancelar
