@@ -84,8 +84,8 @@ export default function SalaPage() {
           ))}
         </div>
 
-        {tab === "maquinas" && <MaquinasTab sala={sala.slug} />}
-        {tab === "cabeamento" && <CabeamentoTab sala={sala.slug} />}
+        {tab === "maquinas" && <MaquinasTab sala={sala.slug ?? sala.id} />}
+        {tab === "cabeamento" && <CabeamentoTab sala={sala.slug ?? sala.id} />}
       </main>
     </div>
   );

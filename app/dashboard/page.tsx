@@ -156,7 +156,7 @@ export default function DashboardPage() {
 
           {salas.length === 0 ? (
             <div className="rounded-lg border border-dashed border-white/30 p-6 text-center text-slate-200">
-              Nenhuma sala cadastrada ainda. Clique em "Adicionar Sala" para começar.
+              Clique em &quot;Adicionar Sala&quot; para começar.
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -327,7 +327,8 @@ export default function DashboardPage() {
                   className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
                 />
                 <p className="mt-1 text-xs text-slate-400">
-                  Use o mesmo nome no campo "Local" do inventário para os equipamentos aparecerem aqui.
+                  
+                  Use o mesmo nome no campo &quot;Local&quot; do inventário para os equipamentos aparecerem aqui.
                 </p>
               </div>
 
