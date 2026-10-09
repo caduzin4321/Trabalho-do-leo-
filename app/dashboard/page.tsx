@@ -119,7 +119,7 @@ export default function DashboardPage() {
 
           {salas.length === 0 ? (
             <div className="rounded-lg border border-dashed border-white/30 p-6 text-center text-slate-200">
-              Nenhuma sala cadastrada ainda. Clique em "Adicionar Sala" para começar.
+              Nenhuma sala cadastrada ainda. Clique em &quot;Adicionar Sala&quot; para começar.
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
